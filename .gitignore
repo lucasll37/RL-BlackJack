@@ -1,0 +1,19 @@
+# virtual environment
+.venv
+
+# pytest cache
+.pytest_cache
+
+# python cache
+__pycache__
+
+coeffs_fixed_50.npy
+coeffs.npy
+f_V_fixed_50.npy
+f_V.npy
+
+test.npy
+
+model/trained
+
+best_model.h5
