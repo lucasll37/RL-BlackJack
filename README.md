@@ -1,33 +1,3 @@
-# [CT-213] Laboratório 3: Implementação de MergeSort com Threads
-
-## Descrição do Projeto
-
-Este projeto foi desenvolvido como parte do curso de Engenharia de Computação, especificamente para a disciplina de Sistemas Operacionais. O objetivo principal é implementar um algoritmo de ordenação Merge Sort utilizando threads para paralelizar o processo.
-
-## Estrutura do Projeto
-
-O projeto está organizado da seguinte forma:
-
-```
-├── .vscode/
-├── build/
-├── docs/
-├── examples/
-├── src/
-│ ├── main.cpp
-│ ├── mergesort.cpp
-│ └── mergesort.h
-├── Makefile
-└── README.md
-```
-
-- **.vscode/**: Configurações específicas do Visual Studio Code.
-- **build/**: Diretório onde o executável será gerado após a compilação.
-- **docs/**: Roteiro proposto da atividade.
-- **examples/**: Exemplos de uso fornecidos na aula.
-- **src/**: Contém os arquivos de código-fonte (`main.cpp`, `mergesort.cpp`, `mergesort.h`).
-- **Makefile**: Arquivo para automatizar a compilação, execução e limpeza do projeto.
-
 ## Instruções de Uso
 
 ### Pré-requisitos
