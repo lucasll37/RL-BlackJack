@@ -17,3 +17,5 @@ test.npy
 model/trained
 
 best_model.h5
+
+.DS_Store
