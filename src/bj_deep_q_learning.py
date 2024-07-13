@@ -1,191 +1,126 @@
-import gymnasium as gym
 import numpy as np
 import random
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Input
-from tensorflow.keras.optimizers import Adam
+import os
+import tensorflow as tf
+# from tensorflow.keras.models import Sequential
+# from tensorflow.keras.layers import Dense, Input
+# from tensorflow.keras.optimizers import Adam
+from keras.models import Sequential
+from keras.layers import Dense, Input
+from keras.optimizers import Adam
 from collections import deque
-import matplotlib.pyplot as plt
+from base import BJAgent
+from utils import reward_engineering, save_agent
 
-# Criando o ambiente
-env = gym.make("Blackjack-v1", natural=False, sab=False)
-
-
-# Definição da rede neural
-def build_model():
-    """
-    Constrói e compila o modelo de rede neural.
-
-    Returns:
-        model (Sequential): Modelo de rede neural compilado.
-    """
-    model = Sequential(
-        [
-            Input(
-                shape=(3,)
-            ),  # A entrada espera três valores: score, dealer_score, e usable_ace
-            Dense(128, activation="relu"),
-            Dense(
-                env.action_space.n, activation="linear"
-            ),  # Saída para cada ação possível
-        ]
-    )
-    model.compile(optimizer=Adam(learning_rate=0.001), loss="mse")
-    return model
+tf.compat.v1.disable_eager_execution()
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
 
-# Política epsilon-gananciosa para a seleção de ações
-def policy(state, model, epsilon):
-    """
-    Escolhe ação baseada na política epsilon-gananciosa.
+class BJAgent_DeepQLearning(BJAgent):
 
-    Args:
-        state (tuple): Estado atual do ambiente, esperado como uma tupla de três valores.
-        model (Sequential): Modelo de rede neural usado para prever os valores de Q.
-        epsilon (float): Probabilidade de escolher uma ação aleatória (exploração).
-
-    Returns:
-        int: Ação escolhida.
-    """
-    if np.random.rand() <= epsilon:
-        return env.action_space.sample()
-
-    # Garantir que o estado tenha a forma correta
-    if not isinstance(state, (tuple, list)) or len(state) != 3:
-        state = (0, 0, 0)
-    state_array = np.array(state, dtype=np.float32).reshape(1, 3)
-    q_values = model.predict(state_array)
-    return np.argmax(q_values[0])
+    def __init__(self, render_mode=None, gamma=1, initial_epsilon=1, maxlen_deque=1_000):
+        super().__init__(render_mode=render_mode, gamma=gamma, initial_epsilon=initial_epsilon)
+        self.name = "DeepQ-Learning"
+        self.model = self._build_model()
+        self.replay_buffer = deque(maxlen=maxlen_deque)
 
 
-# Função para treinar o modelo usando experiência replay
-def train_model(model, memory, batch_size=32, discount_factor=0.99):
-    """
-    Treina o modelo usando experiência replay.
+    def _build_model(self):
+        model = Sequential()
+        model.add(Input(shape=(self.dimensions_states,)))
+        model.add(Dense(16, activation="relu"))
+        model.add(Dense(4, activation="relu"))
+        model.add(Dense(self.n_actions, activation="linear"))
 
-    Args:
-        model (Sequential): Modelo de rede neural a ser treinado.
-        memory (deque): Buffer de replay contendo as experiências passadas.
-        batch_size (int): Tamanho do lote para treinamento.
-        discount_factor (float): Fator de desconto para o valor Q futuro.
-    """
-    if len(memory) < batch_size:
-        return
-    minibatch = random.sample(memory, batch_size)
-    states, actions, rewards, next_states, dones = zip(*minibatch)
+        model.compile(optimizer=Adam(learning_rate=0.001), loss="mse")
 
-    def ensure_state_shape(state):
-        if isinstance(state, (list, tuple)) and len(state) == 3:
-            return np.array(state, dtype=np.float32).reshape(3)
+        return model
+    
+    @tf.function
+    def epsilon_greedy_policy(self, state, epsilon):    
+        if np.random.rand() < epsilon:
+            return np.random.choice(self.n_actions)
+        
         else:
-            return np.zeros(3, dtype=np.float32)
+            state_array = np.array(state, dtype=np.float32).reshape(1, 3)
+            q_values = self.model.predict(state_array, verbose=0)[0]
+            
+            return np.argmax(q_values)
+        
 
-    states = np.array([ensure_state_shape(state) for state in states])
-    next_states = np.array([ensure_state_shape(state) for state in next_states])
-    actions = np.array(actions, dtype=np.int32)
-    rewards = np.array(rewards, dtype=np.float32)
-    dones = np.array(dones, dtype=bool)
+    def update_police(self, batch_size=32):
 
-    targets = model.predict(states)
-    next_q_values = model.predict(next_states)
-    next_q_values[dones] = 0  # Se o episódio terminou, o valor futuro é 0
+        if len(self.replay_buffer) < batch_size:
+            return
+                
+        minibatch = random.sample(self.replay_buffer, batch_size)
+        states = list()
+        targets = list()
 
-    targets[np.arange(batch_size), actions] = rewards + discount_factor * np.max(
-        next_q_values, axis=1
-    )
-    model.fit(states, targets, epochs=1, verbose=0)
+        for state_array, action, reward, next_state_array, done in minibatch:
+            target = self.model.predict(state_array, verbose=0)
 
+            if not done:
+                target[0][action] = reward + self.gamma * self.model.predict(next_state_array, verbose=0)[0][action]
 
-# Inicialização
-model = build_model()
-memory = deque(maxlen=10000)  # Buffer de replay
+            else:
+                target[0][action] = reward
 
-# Parâmetros de treinamento
-episodes = 1000
-initial_epsilon = 1.0  # Inicializando epsilon para exploração total
-min_epsilon = 0.1  # Mínimo valor de epsilon
-epsilon_decay = 0.995  # Fator de decaimento do epsilon
+            states.append(state_array[0])
+            targets.append(target[0])
 
-epsilon = initial_epsilon
-rewards_list = []  # Lista para armazenar as recompensas de cada episódio
+        _ = self.model.fit(np.array(states), np.array(targets), epochs=1, verbose=0)
 
-# Treinamento
-for episode in range(episodes):
-    state = env.reset()[0]
-    done = False
-    total_reward = 0
-    while not done:
-        action = policy(state, model, epsilon)
-        next_state, reward, done, truncated, info = env.step(action)
-        next_state = next_state[0]
-        total_reward += reward
-
-        # Armazena a transição no buffer de replay
-        memory.append((state, action, reward, next_state, done))
-        state = next_state
-
-        # Treina a rede neural
-        train_model(model, memory)
-
-    rewards_list.append(total_reward)
-    # Reduz o epsilon gradualmente
-    epsilon = max(
-        min_epsilon, epsilon_decay * epsilon
-    )  # Decaimento exponencial do epsilon
-
-    if (episode + 1) % 100 == 0:
-        print(
-            f"Episode: {episode + 1}, Epsilon: {epsilon:.4f}, Total Reward: {total_reward}"
-        )
+        return
 
 
-# Função para calcular a média móvel
-def moving_average(data, window_size):
-    """
-    Calcula a média móvel dos dados.
+    def learn(self, iterations=100, final_epsilon=0.01, epsilon_decay=None, epsilon_val=None, validate_each_iteration=None, verbose=True):
+        self.validate_each_iteration = validate_each_iteration
 
-    Args:
-        data (list): Lista de dados.
-        window_size (int): Tamanho da janela para calcular a média móvel.
+        if isinstance(epsilon_decay, (int, float)):
+            epsilon_decay_factor = epsilon_decay
+        else:
+            epsilon_decay_factor = np.power(final_epsilon, 1/iterations)
 
-    Returns:
-        list: Lista com as médias móveis.
-    """
-    return np.convolve(data, np.ones(window_size) / window_size, mode="valid")
+        done = True
+
+        for iteration in range(1, iterations+1):
+
+            if done:
+                state, _ = self.env.reset()
+                done = False
 
 
-# Avaliação visual da performance
-window_size = 50
-moving_avg_rewards = moving_average(rewards_list, window_size)
+            action = self.epsilon_greedy_policy(state, epsilon=self.epsilon)
+            next_state, reward, done, _, _ = self.env.step(action) ##### Concerta!!!!!!!!
+            reward = reward_engineering(state, action, reward)
 
-plt.figure(figsize=(12, 5))
-plt.plot(
-    range(len(moving_avg_rewards)),
-    moving_avg_rewards,
-    label="Média Móvel das Recompensas",
-)
-plt.xlabel("Episódios")
-plt.ylabel("Recompensa Média")
-plt.title(f"Recompensa Média por Episódio (Janela de {window_size} Episódios)")
-plt.legend()
-plt.grid()
-plt.show()
+            state_array = np.array(state, dtype=np.float32).reshape(1, -1)
+            next_state_array = np.array(next_state, dtype=np.float32).reshape(1, -1)
 
-plt.figure(figsize=(12, 5))
-plt.hist(rewards_list, bins=20, edgecolor="black")
-plt.xlabel("Recompensas")
-plt.ylabel("Frequência")
-plt.title("Distribuição das Recompensas por Episódio")
-plt.grid()
-plt.show()
+            self.replay_buffer.append((state_array, action, reward, next_state_array, done))
+            self.update_police()
+            state = next_state
 
-# Testando o modelo treinado
-for _ in range(10):
-    state = env.reset()[0]
-    done = False
-    while not done:
-        action = policy(state, model, epsilon=0)  # Sem exploração durante o teste
-        state, reward, done, truncated, info = env.step(action)
-        state = state[0]
-        if done:
-            print(f"Recompensa obtida: {reward}")
+            if (isinstance(validate_each_iteration, int) and iteration % validate_each_iteration == 0):
+                if not isinstance(epsilon_val, (int, float)):
+                    _epsilon_val = self.epsilon
+                else:
+                    _epsilon_val = epsilon_val
+                    
+                result = self.play(num_episodes=10_000, render_mode=None, print_results=False, epsilon=_epsilon_val)
+                self.history.append(result)
+
+                if verbose:
+                    print(f"Iteration: {iteration:10d}, epsilon: {self.epsilon:.5f}, Win: {result[0]}, Lose: {result[1]}, Win rate: {result[0]/(result[0]+result[1]):.3f}")
+
+            self.epsilon *= epsilon_decay_factor
+
+
+if __name__ == "__main__":
+    agent = BJAgent_DeepQLearning()
+    agent.learn(iterations=2000, final_epsilon=0.05, epsilon_val=0, validate_each_iteration=50, verbose=True)
+    fig = agent.plot_history(return_fig=True)
+    fig.savefig(f"./images/{agent.name}.png", dpi=300, format="png")
+    save_agent(agent, f"./models/{agent.name}.pickle")
