@@ -85,3 +85,4 @@ wheel==0.43.0
 wrapt==1.16.0
 gymnasium[toy-text]
 scipy==1.14.0
+joblib==1.4.2

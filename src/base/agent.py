@@ -10,10 +10,10 @@ from scipy.stats import norm
 
 class BJAgent(ABC):
 
-    def __init__(self, render_mode=None, gamma=1, epsilon=1):
+    def __init__(self, render_mode=None, gamma=1, initial_epsilon=1):
         self.env = gym.make("Blackjack-v1", natural=False, sab=False, render_mode=render_mode)
         self.gamma = gamma
-        self.initial_epsilon = epsilon
+        self.initial_epsilon = initial_epsilon
         self.epsilon = self.initial_epsilon
         self.map_state_Q = defaultdict(int)
         self.n_actions = self.env.action_space.n
@@ -120,11 +120,11 @@ class BJAgent(ABC):
 
         coordenate = [self.validate_each_iteration * i for i in range(len(evolution))]
         # rolling_mean, lower_bound, upper_bound = self._calculate_confidence_interval(Series(evolution))
-        rolling_mean = Series(evolution).rolling(window=15).mean()
+        rolling_mean = Series(evolution).rolling(window=10).mean()
 
-        ax.set_title(f"[{self.name}] Win rate evolution", fontsize=16)
+        ax.set_title(f"[{self.name}] BlackJack - Win rate evolution", fontsize=16)
         sns.lineplot(x=coordenate, y=evolution, color="green", label="Win rate", linestyle="-", linewidth="1", ax=ax, alpha=0.4)
-        sns.lineplot(x=coordenate, y=rolling_mean, color='blue', label='Moving average', linestyle='-', linewidth=2, ax=ax)
+        sns.lineplot(x=coordenate, y=rolling_mean, color='blue', label='Moving average', linestyle='-.', linewidth=2, ax=ax)
         # ax.fill_between(coordenate, lower_bound, upper_bound, color="lightgreen", alpha=0.3, label='Confidence interval (95%)')
         ax.set_ylabel("Win rate", color="blue", fontsize=14)
         ax.set_xlabel("Episode", color="blue", fontsize=14)
@@ -133,9 +133,13 @@ class BJAgent(ABC):
         ax.set_facecolor("#F0FFFF")
         
         plt.grid(True, linestyle=":", linewidth=0.5, color="gray", alpha=0.5)
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
+        plt.show()
+        plt.close()
 
         if return_fig:
             return fig
+        
 
 
     def _calculate_confidence_interval(self, series, window_size=15, confidence_level=0.95):
