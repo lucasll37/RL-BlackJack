@@ -1,65 +1,53 @@
-import gymnasium as gym
+from model import BJAgent
+from utils import reward_engineering
 import numpy as np
 from collections import defaultdict
 
-# Criação do ambiente Blackjack
-env = gym.make("Blackjack-v1", natural=False, sab=False)
 
-def sample_policy(state, policy_dict):
-    return policy_dict.get(state, 0)  # Retorna a ação baseada na política
+class BJAgent_MonteCarlo(BJAgent):
 
-def policy_iteration(env, policy_dict, gamma=1.0, theta=0.0001, max_iterations=1000):
-    value_table = defaultdict(float)
-    is_policy_stable = False
-    iteration = 0
+    def __init__(self, render_mode=None, gamma=1):
+        super().__init__(render_mode=None, gamma=1)
+        self.name = "Monte Carlo"
 
-    while not is_policy_stable and iteration < max_iterations:
-        # Avaliação da política
-        while True:
-            delta = 0
-            for state in policy_dict:
-                old_value = value_table[state]
-                action = policy_dict[state]
-                env.reset()
-                env.player, env.dealer, env.usable_ace = state  # Configura o estado no ambiente
-                next_state, reward, done, _ = env.step(action)
-                next_state = (env.player, env.dealer, env.usable_ace)
-                new_value = reward if done else reward + gamma * value_table[next_state]
-                value_table[state] = new_value
-                delta = max(delta, abs(old_value - new_value))
-            if delta < theta:
-                break
 
-        # Melhoria da política
-        is_policy_stable = True
-        for state in policy_dict:
-            old_action = policy_dict[state]
-            # Avaliar ações possíveis
-            action_values = []
-            for action in range(2):  # Ações possíveis são 0 (parar) e 1 (pedir)
-                env.reset()
-                env.player, env.dealer, env.usable_ace = state  # Configura o estado no ambiente
-                next_state, reward, done, _ = env.step(action)
-                next_state = (env.player, env.dealer, env.usable_ace)
-                action_value = reward if done else reward + gamma * value_table[next_state]
-                action_values.append(action_value)
-            best_action = np.argmax(action_values)
-            policy_dict[state] = best_action
-            if old_action != best_action:
-                is_policy_stable = False
+    def learn(self, iterations=10_000, final_epsilon=0.01, epsilon_decay=None, epsilon_val=None, validate_each_iteration=None, verbose=True):
+        self.validate_each_iteration = validate_each_iteration
 
-        iteration += 1
+        if isinstance(epsilon_decay, (int, float)):
+            epsilon_decay_factor = epsilon_decay
+        else:
+            epsilon_decay_factor = np.power(final_epsilon, 1/iterations)
 
-    return policy_dict, value_table
+        if not isinstance(epsilon_val, (int, float)):
+            epsilon_val = self.epsilon
 
-# Inicializa a política para cada estado possível
-policy_dict = {(score, dealer_score, usable_ace): 0 if score >= 20 else 1
-               for score in range(4, 22)
-               for dealer_score in range(1, 11)
-               for usable_ace in [True, False]}
+        for iteration in range(1, iterations+1):
+            G = 0
+            state, _ = self.env.reset()
+            done = False
+            episodes = []
 
-final_policy, value_table = policy_iteration(env, policy_dict)
+            while not done:
+                action = self.epsilon_greedy_policy(state, epsilon=self.epsilon)
+                next_state, reward, done, _, _ = self.env.step(action)
+                reward = reward_engineering(state, action, reward)
+                episodes.append((state, action, reward))
+                state = next_state
 
-# Imprime os resultados
-for state, value in list(value_table.items())[:5]:
-    print(f"Estado: {state}, Valor: {value}")
+            for t in range(len(episodes) - 1, -1, -1):
+                state, action, reward = episodes[t]
+                G = self.gamma * G + reward
+                self.N[self.map_state_Q[state]] += 1
+                old_value = self.Q[self.map_state_Q[state], action]
+                new_value = old_value + (1 / self.N[self.map_state_Q[state]]) * (G - old_value)
+                self.Q[self.map_state_Q[state], action] = new_value
+
+            if (isinstance(validate_each_iteration, int) and iteration % validate_each_iteration == 0):
+                result = self.play(num_episodes=10_000, render_mode=None, print_results=False, epsilon=epsilon_val)
+                self.history.append(result)
+
+                if verbose:
+                    print(f"Episode: {iteration:10d}, epsilon: {self.epsilon:.5f}, Win: {result[0]}, Lose: {result[1]}, Win rate: {result[0]/(result[0]+result[1]):.3f}")
+
+            self.epsilon *= epsilon_decay_factor

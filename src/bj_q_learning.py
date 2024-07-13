@@ -1,47 +1,49 @@
-import gymnasium as gym
 import numpy as np
-from collections import defaultdict
-
-env = gym.make("Blackjack-v1", natural=False, sab=False)
-
-
-def sample_policy(Q, observation):
-    """Retorna a ação com o maior valor Q para uma observação, escolhendo aleatoriamente se houver empate."""
-    return np.argmax(Q[observation])
+from model import BJAgent
+from utils import reward_engineering
 
 
-def q_learning(env, n_episodes, alpha=0.01, gamma=1.0):
-    # Inicializa a tabela Q com zeros para cada par estado-ação
-    Q = defaultdict(lambda: np.zeros(env.action_space.n))
+class BJAgent_QLearning(BJAgent):
 
-    for _ in range(n_episodes):
-        observation, info = env.reset()
-        while True:
-            # Escolhe a ação com base na política derivada de Q (política gananciosa)
-            action = sample_policy(Q, observation)
-            next_observation, reward, done, truncated, info = env.step(action)
+    def __init__(self, render_mode=None, gamma=1):
+        super().__init__(render_mode=None, gamma=1)
+        self.name = "Q-Learning"
 
-            # Seleciona a ação que maximiza Q para o próximo estado
-            best_next_action = np.argmax(Q[next_observation])
 
-            # Fórmula de atualização do Q-Learning
-            Q[observation][action] += alpha * (
-                reward
-                + gamma * Q[next_observation][best_next_action]
-                - Q[observation][action]
-            )
+    def learn(self, iterations=10_000, final_epsilon=0.01, epsilon_decay=None, epsilon_val=None, validate_each_iteration=None, verbose=True):
+        self.validate_each_iteration = validate_each_iteration
+        
+        if isinstance(epsilon_decay, (int, float)):
+            epsilon_decay_factor = epsilon_decay
+        else:
+            epsilon_decay_factor = np.power(final_epsilon, 1/iterations)
 
-            observation = next_observation
+        if not isinstance(epsilon_val, (int, float)):
+            epsilon_val = self.epsilon
+
+        done = True
+
+        for iteration in range(1, iterations+1):
 
             if done:
-                break
+                state, _ = self.env.reset()
+                done = False
 
-    return Q
+            action = self.epsilon_greedy_policy(state, epsilon=self.epsilon)
+            next_state, reward, done, _, _ = self.env.step(action)
+            reward = reward_engineering(state, action, reward)
+            next_action = self.epsilon_greedy_policy(next_state, epsilon=0) # greedy policy
+            self.N[self.map_state_Q[state]] += 1
+            old_value = self.Q[self.map_state_Q[state], action]
+            new_value = old_value + (1 / self.N[self.map_state_Q[state]]) * (reward + self.gamma * self.Q[self.map_state_Q[next_state], next_action] - old_value)
+            self.Q[self.map_state_Q[state], action] = new_value
+            state = next_state
 
+            if (isinstance(validate_each_iteration, int) and iteration % validate_each_iteration == 0):
+                result = self.play(num_episodes=10_000, render_mode=None, print_results=False, epsilon=epsilon_val)
+                self.history.append(result)
 
-if __name__ == "__main__":
-    Q = q_learning(env, n_episodes=50000)
+                if verbose:
+                    print(f"Episode: {iteration:10d}, epsilon: {self.epsilon:.5f}, Win: {result[0]}, Lose: {result[1]}, Win rate: {result[0]/(result[0]+result[1]):.3f}")
 
-    # Imprime alguns valores Q para observar o aprendizado
-    for state, actions in list(Q.items())[:5]:
-        print(f"Estado: {state}, Ações: {actions}")
+            self.epsilon *= epsilon_decay_factor

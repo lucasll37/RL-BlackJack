@@ -19,9 +19,13 @@ configure: ## Configure the project for building.
 		echo 'Done.'"
 
 
+# build: ## Build all targets in the project.
+# 	bash -c "source ./.venv/bin/activate && \
+# 		python -m black ."
+# 	@echo "Done."
+
 build: ## Build all targets in the project.
-	bash -c "source ./.venv/bin/activate && \
-		python -m black ."
+	bash -c "source ./.venv/bin/activate"
 	@echo "Done."
 
 

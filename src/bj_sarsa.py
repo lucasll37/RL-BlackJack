@@ -1,65 +1,50 @@
-import gymnasium as gym
+from model import BJAgent
+from utils import reward_engineering
 import numpy as np
 from collections import defaultdict
 
-env = gym.make("Blackjack-v1", natural=False, sab=False)
+
+class BJAgent_Sarsa(BJAgent):
+
+    def __init__(self, render_mode=None, gamma=1):
+        super().__init__(render_mode=None, gamma=1)
+        self.name = "Sarsa"
 
 
-def sample_policy(observation):
-    score, dealer_score, usable_ace = observation
-    # A política decide "pegar" se o score é menor que 20, e "não pegar" se for 20 ou mais
-    return 0 if score >= 20 else 1
+    def learn(self, iterations=10_000, final_epsilon=0.01, epsilon_decay=None, epsilon_val=None, validate_each_iteration=None, verbose=True):
+        self.validate_each_iteration = validate_each_iteration
+        
+        if isinstance(epsilon_decay, (int, float)):
+            epsilon_decay_factor = epsilon_decay
+        else:
+            epsilon_decay_factor = np.power(final_epsilon, 1/iterations)
 
+        if not isinstance(epsilon_val, (int, float)):
+            epsilon_val = self.epsilon
 
-def generate_episode(policy, env):
-    states, actions, rewards = [], [], []
-    observation, info = env.reset()
+        done = True
 
-    while True:
-        action = policy(observation)
-        states.append(observation)
-        actions.append(action)
-
-        observation, reward, done, truncated, info = env.step(action)
-        rewards.append(reward)
-
-        if done:
-            break
-
-    return states, actions, rewards
-
-
-def sarsa(policy, env, n_episodes, alpha=0.01, gamma=1.0):
-    # Inicializa a tabela Q com zeros
-    Q = defaultdict(lambda: np.zeros(env.action_space.n))
-
-    for _ in range(n_episodes):
-        observation, info = env.reset()
-        action = policy(observation)
-        while True:
-            next_observation, reward, done, truncated, info = env.step(action)
-            next_action = policy(
-                next_observation
-            )  # Escolhe a próxima ação baseada na política
-
-            # Fórmula de atualização SARSA
-            Q[observation][action] += alpha * (
-                reward
-                + gamma * Q[next_observation][next_action]
-                - Q[observation][action]
-            )
-
-            observation, action = next_observation, next_action
+        for iteration in range(1, iterations+1):
 
             if done:
-                break
+                state, _ = self.env.reset()
+                done = False
 
-    return Q
+            action = self.epsilon_greedy_policy(state, epsilon=self.epsilon)
+            next_state, reward, done, _, _ = self.env.step(action)
+            reward = reward_engineering(state, action, reward)
+            next_action = self.epsilon_greedy_policy(next_state, epsilon=self.epsilon) # epsilon-greedy policy
+            self.N[self.map_state_Q[state]] += 1
+            old_value = self.Q[self.map_state_Q[state], action]
+            new_value = old_value + (1 / self.N[self.map_state_Q[state]]) * (reward + self.gamma * self.Q[self.map_state_Q[next_state], next_action] - old_value)
+            self.Q[self.map_state_Q[state], action] = new_value
+            state = next_state
 
+            if (isinstance(validate_each_iteration, int) and iteration % validate_each_iteration == 0):
+                result = self.play(num_episodes=10_000, render_mode=None, print_results=False, epsilon=epsilon_val)
+                self.history.append(result)
 
-if __name__ == "__main__":
-    Q = sarsa(sample_policy, env, n_episodes=50000)
+                if verbose:
+                    print(f"Episode: {iteration:10d}, epsilon: {self.epsilon:.5f}, Win: {result[0]}, Lose: {result[1]}, Win rate: {result[0]/(result[0]+result[1]):.3f}")
 
-    # Imprime alguns valores Q para observar o aprendizado
-    for state, actions in list(Q.items())[:5]:
-        print(f"Estado: {state}, Ações: {actions}")
+            self.epsilon *= epsilon_decay_factor
