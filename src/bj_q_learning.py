@@ -5,9 +5,9 @@ from utils import reward_engineering, save_agent
 
 class BJAgent_QLearning(BJAgent):
 
-    def __init__(self, render_mode=None, gamma=1, initial_epsilon=1):
-        super().__init__(render_mode=render_mode, gamma=gamma, initial_epsilon=initial_epsilon)
-        self.name = "Q-Learning"
+    def __init__(self, render_mode=None, gamma=1, initial_epsilon=1, natural=False, sab=False):
+        super().__init__(render_mode=render_mode, gamma=gamma, initial_epsilon=initial_epsilon, natural=natural, sab=sab)
+        self.name = "QLearning"
 
 
     def learn(self, iterations=10_000, final_epsilon=0.01, epsilon_decay=None, epsilon_val=None, validate_each_iteration=None, verbose=True):
@@ -42,7 +42,7 @@ class BJAgent_QLearning(BJAgent):
                 else:
                     _epsilon_val = epsilon_val
                     
-                result = self.play(num_episodes=10_000, render_mode=None, print_results=False, epsilon=_epsilon_val)
+                result = self.play(num_episodes=1_000, render_mode=None, print_results=False, epsilon=_epsilon_val)
                 self.history.append(result)
 
                 if verbose:
@@ -55,7 +55,7 @@ class BJAgent_QLearning(BJAgent):
 
 if __name__ == "__main__":
     agent = BJAgent_QLearning()
-    agent.learn(iterations=2000, final_epsilon=0.05, epsilon_val=0, validate_each_iteration=50, verbose=True)
+    agent.learn(iterations=500_000, final_epsilon=0.05, epsilon_val=0, validate_each_iteration=1_000, verbose=True)
     fig = agent.plot_history(return_fig=True)
     fig.savefig(f"./images/{agent.name}.png", dpi=300, format="png")
     save_agent(agent, f"./models/{agent.name}.pickle")

@@ -10,11 +10,13 @@ from scipy.stats import norm
 
 class BJAgent(ABC):
 
-    def __init__(self, render_mode=None, gamma=1, initial_epsilon=1):
-        self.env = gym.make("Blackjack-v1", natural=False, sab=False, render_mode=render_mode)
+    def __init__(self, render_mode=None, gamma=1, initial_epsilon=1, natural=False, sab=False):
+        self.env = gym.make("Blackjack-v1", natural=natural, sab=sab, render_mode=render_mode)
         self.gamma = gamma
         self.initial_epsilon = initial_epsilon
         self.epsilon = self.initial_epsilon
+        self.natural = natural
+        self.sab = sab
         self.map_state_Q = defaultdict(int)
         self.n_actions = self.env.action_space.n
         self.n_states = 0
@@ -66,7 +68,7 @@ class BJAgent(ABC):
         
 
     def play(self, num_episodes=1_000, render_mode="human", print_results=True, epsilon=None):
-        env = gym.make("Blackjack-v1", natural=False, sab=False, render_mode=render_mode)
+        env = gym.make("Blackjack-v1", natural=self.natural, sab=self.sab, render_mode=render_mode)
         win = 0
         lose = 0
 
@@ -120,11 +122,11 @@ class BJAgent(ABC):
 
         coordenate = [self.validate_each_iteration * i for i in range(len(evolution))]
         # rolling_mean, lower_bound, upper_bound = self._calculate_confidence_interval(Series(evolution))
-        rolling_mean = Series(evolution).rolling(window=10).mean()
+        rolling_mean = Series(evolution).rolling(window=30).mean()
 
-        ax.set_title(f"[{self.name}] BlackJack - Win rate evolution", fontsize=16)
-        sns.lineplot(x=coordenate, y=evolution, color="green", label="Win rate", linestyle="-", linewidth="1", ax=ax, alpha=0.4)
-        sns.lineplot(x=coordenate, y=rolling_mean, color='blue', label='Moving average', linestyle='-.', linewidth=2, ax=ax)
+        ax.set_title(f"[{self.name}] BLACKJACK - WIN RATE EVOLUTION", fontsize=16)
+        sns.lineplot(x=coordenate, y=evolution, color="green", label="Win rate", linestyle="-", linewidth=1, ax=ax, alpha=0.3)
+        sns.lineplot(x=coordenate, y=rolling_mean, color='blue', label='Moving average', linestyle='-', linewidth=2, ax=ax)
         # ax.fill_between(coordenate, lower_bound, upper_bound, color="lightgreen", alpha=0.3, label='Confidence interval (95%)')
         ax.set_ylabel("Win rate", color="blue", fontsize=14)
         ax.set_xlabel("Episode", color="blue", fontsize=14)
@@ -137,10 +139,11 @@ class BJAgent(ABC):
         plt.show()
         plt.close()
 
+        rolling_mean.to_csv(f"./data/{self.name}.csv", index=False)
+
         if return_fig:
             return fig
         
-
 
     def _calculate_confidence_interval(self, series, window_size=15, confidence_level=0.95):
 

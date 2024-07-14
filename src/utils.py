@@ -25,6 +25,6 @@ def load_agent(filename):
     with open(filename, 'rb') as file:
         agent = cloudpickle.load(file)
 
-    print(f"Agente carregado de {filename}")
+    print(f"\n\nAgente carregado de {filename}\n")
 
     return agent
