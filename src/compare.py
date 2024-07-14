@@ -12,14 +12,14 @@ temporalDifference = pd.read_csv("./data/TemporalDifference.csv")
 fig, ax = plt.subplots(figsize=(12, 8))
 plt.rcParams["savefig.dpi"] = 300
 
-coordenate = [1_000 * i for i in range(len(monteCarlo))]
+coordenate = [5 * i for i in range(len(monteCarlo))]
 
 
 ax.set_title(f"BLACKJACK - WIN RATE EVOLUTION COMPARISON", fontsize=16)
 sns.lineplot(x=coordenate, y=monteCarlo.iloc[:, 0], color="green", label="Monte Carlo", linestyle="-", linewidth=1.5, ax=ax)
 sns.lineplot(x=coordenate, y=temporalDifference.iloc[:, 0], color="blue", label="Temporal Difference", linestyle="-", linewidth=1.5, ax=ax)
 sns.lineplot(x=coordenate, y=SARSA.iloc[:, 0], color="orange", label="SARSA", linestyle="-", linewidth=1.5, ax=ax)
-sns.lineplot(x=coordenate, y=QLearning.iloc[:, 0], color="black", label="Q Learning", linestyle="-", linewidth=1.5, ax=ax)
+sns.lineplot(x=coordenate, y=QLearning.iloc[:, 0], color="black", label="Q-Learning", linestyle="-", linewidth=1.5, ax=ax)
 ax.set_ylabel("Win rate", color="blue", fontsize=14)
 ax.set_xlabel("Episode", color="blue", fontsize=14)
 ax.tick_params(axis="x", colors="blue")
@@ -28,6 +28,6 @@ ax.set_facecolor("#F0FFFF")
 
 plt.grid(True, linestyle=":", linewidth=0.5, color="gray", alpha=0.5)
 plt.tight_layout(rect=[0, 0, 1, 0.95])
-fig.savefig(f"./images/compare.png", dpi=300, format="png")
+fig.savefig(f"./images/comparison.png", dpi=300, format="png")
 plt.show()
 plt.close()

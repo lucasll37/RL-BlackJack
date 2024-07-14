@@ -2,21 +2,24 @@ import gymnasium as gym
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import warnings
 from pandas import Series
 from collections import defaultdict
 from abc import ABC
-from scipy.stats import norm
+from scipy.optimize import curve_fit
+from utils import save_agent
 
 
 class BJAgent(ABC):
 
-    def __init__(self, render_mode=None, gamma=1, initial_epsilon=1, natural=False, sab=False):
+    def __init__(self, render_mode=None, gamma=1, initial_epsilon=1, natural=False, sab=False, max_iteration=500):
         self.env = gym.make("Blackjack-v1", natural=natural, sab=sab, render_mode=render_mode)
         self.gamma = gamma
         self.initial_epsilon = initial_epsilon
         self.epsilon = self.initial_epsilon
         self.natural = natural
         self.sab = sab
+        self.max_iteration = max_iteration
         self.map_state_Q = defaultdict(int)
         self.n_actions = self.env.action_space.n
         self.n_states = 0
@@ -55,7 +58,7 @@ class BJAgent(ABC):
         self.N = np.zeros(self.n_states)
 
 
-    def learn(self, iterations=10_000, final_epsilon=0.01, epsilon_decay=None, epsilon_val=None, validate_each_iteration=None, verbose=True):
+    def learn(self, iterations=10_000, final_epsilon=0.01, epsilon_decay=None, epsilon_val=None, validate_each_iteration=None, verbose=True, save=True):
 
         raise NotImplementedError('Please implement this method')
 
@@ -120,14 +123,12 @@ class BJAgent(ABC):
         fig, ax = plt.subplots(figsize=(12, 8))
         plt.rcParams["savefig.dpi"] = 300
 
-        coordenate = [self.validate_each_iteration * i for i in range(len(evolution))]
-        # rolling_mean, lower_bound, upper_bound = self._calculate_confidence_interval(Series(evolution))
-        rolling_mean = Series(evolution).rolling(window=30).mean()
+        coordenate = np.array([self.validate_each_iteration * i for i in range(len(evolution))])
+        curve_fit, asymptote = self.fit_exponential(coordenate, evolution)
 
         ax.set_title(f"[{self.name}] BLACKJACK - WIN RATE EVOLUTION", fontsize=16)
-        sns.lineplot(x=coordenate, y=evolution, color="green", label="Win rate", linestyle="-", linewidth=1, ax=ax, alpha=0.3)
-        sns.lineplot(x=coordenate, y=rolling_mean, color='blue', label='Moving average', linestyle='-', linewidth=2, ax=ax)
-        # ax.fill_between(coordenate, lower_bound, upper_bound, color="lightgreen", alpha=0.3, label='Confidence interval (95%)')
+        sns.lineplot(x=coordenate, y=evolution, color="green", label="Win rate", linestyle="-", linewidth=1, ax=ax, alpha=0.4)
+        sns.lineplot(x=coordenate, y=curve_fit, color='blue', label=f'Fitted curve (asymptote: {asymptote:.3f})', linestyle='-', linewidth=1.5, ax=ax)
         ax.set_ylabel("Win rate", color="blue", fontsize=14)
         ax.set_xlabel("Episode", color="blue", fontsize=14)
         ax.tick_params(axis="x", colors="blue")
@@ -139,21 +140,51 @@ class BJAgent(ABC):
         plt.show()
         plt.close()
 
-        rolling_mean.to_csv(f"./data/{self.name}.csv", index=False)
+        Series(curve_fit).to_csv(f"./data/{self.name}.csv", index=False)
 
         if return_fig:
             return fig
         
+        
+    def fit_exponential(self, x, y):
 
-    def _calculate_confidence_interval(self, series, window_size=15, confidence_level=0.95):
+        def curve(x, a, b, c):
+            return a * (1 - np.exp(-b * x)) + c
+        
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
 
-        alpha = 1 - confidence_level
-        z = norm.ppf(1 - alpha / 2)
+            params, _ = curve_fit(curve, x, y)
+            a, b, c = params        
+            y_fitted = curve(x, a, b, c)
+            asymptote = a + c
+            
+        return y_fitted, asymptote
+    
 
-        rolling_mean = series.rolling(window=window_size).mean()
-        rolling_std = series.rolling(window=window_size).std()
+    def validation(self, iteration, iterations, epsilon_val, verbose, save):
 
-        lower_bound = rolling_mean - (z * rolling_std / np.sqrt(window_size))
-        upper_bound = rolling_mean + (z * rolling_std / np.sqrt(window_size))
+        if not isinstance(epsilon_val, (int, float)):
+            _epsilon_val = self.epsilon
+        else:
+            _epsilon_val = epsilon_val
+            
+        result = self.play(num_episodes=1_000, render_mode=None, print_results=False, epsilon=_epsilon_val)
+        self.history.append(result)
+            
+        if verbose:
+            print(f"Iteration: {iteration:7d}/{iterations}, epsilon: {self.epsilon:.5f}, Win: {result[0]}, Lose: {result[1]}, Win rate: {result[0]/(result[0]+result[1]):.3f}")
 
-        return rolling_mean, lower_bound, upper_bound
+        if save:
+            save_agent(self, f"./models/{self.name}.pickle")
+
+
+    def epsilon_update(self, iterations, validate_each_iteration, final_epsilon, epsilon_decay):
+        self.validate_each_iteration = validate_each_iteration
+
+        if isinstance(epsilon_decay, (int, float)):
+            epsilon_decay_factor = epsilon_decay
+        else:
+            epsilon_decay_factor = np.power(final_epsilon, 1/iterations)
+
+        return epsilon_decay_factor

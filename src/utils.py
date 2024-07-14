@@ -19,7 +19,7 @@ def save_agent(agent, filename):
     with open(filename, 'wb') as file:
         cloudpickle.dump(agent, file)
 
-    print(f"Agente salvo em {filename}")
+    print(f"\nAgente salvo em {filename}\n")
 
 def load_agent(filename):
     with open(filename, 'rb') as file:

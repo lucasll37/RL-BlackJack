@@ -7,27 +7,30 @@ import tensorflow as tf
 from keras.models import Sequential
 from keras.layers import Dense, Input
 from keras.optimizers import Adam
+from keras.initializers import RandomUniform
 from collections import deque
 from base import BJAgent
-from utils import reward_engineering, save_agent
+from utils import reward_engineering
 import gymnasium as gym
 
 
 class BJAgent_DeepQLearning(BJAgent):
 
-    def __init__(self, render_mode=None, gamma=1, initial_epsilon=1, maxlen_deque=1_000):
-        super().__init__(render_mode=render_mode, gamma=gamma, initial_epsilon=initial_epsilon)
+    def __init__(self, render_mode=None, gamma=1, initial_epsilon=1, max_iteration=500, maxlen_deque=4_096):
+        super().__init__(render_mode=render_mode, gamma=gamma, initial_epsilon=initial_epsilon, max_iteration=max_iteration)
         self.name = "DeepQLearning"
         self.model = self._build_model()
         self.replay_buffer = deque(maxlen=maxlen_deque)
 
 
     def _build_model(self):
+        initializer = RandomUniform(minval=-0.1, maxval=0.1)
+
         model = Sequential()
         model.add(Input(shape=(self.dimensions_states,)))
-        model.add(Dense(16, activation="relu"))
-        model.add(Dense(4, activation="relu"))
-        model.add(Dense(self.n_actions, activation="linear"))
+        model.add(Dense(16, activation="relu", kernel_initializer=initializer))
+        model.add(Dense(8, activation="relu", kernel_initializer=initializer))
+        model.add(Dense(self.n_actions, activation="linear", kernel_initializer=initializer))
 
         model.compile(optimizer=Adam(learning_rate=0.001), loss="mse")
 
@@ -70,18 +73,15 @@ class BJAgent_DeepQLearning(BJAgent):
         return
 
 
-    def learn(self, iterations=100, final_epsilon=0.01, epsilon_decay=None, epsilon_val=None, validate_each_iteration=None, verbose=True):
-        self.validate_each_iteration = validate_each_iteration
+    def learn(self, iterations=100, final_epsilon=0.01, epsilon_decay=None, epsilon_val=None, validate_each_iteration=None, verbose=True, save=True):
 
-        if isinstance(epsilon_decay, (int, float)):
-            epsilon_decay_factor = epsilon_decay
-        else:
-            epsilon_decay_factor = np.power(final_epsilon, 1/iterations)
+        epsilon_decay_factor = self.epsilon_update(iterations, validate_each_iteration, final_epsilon, epsilon_decay)
 
         done = True
 
         for iteration in range(1, iterations+1):
-            print(f"iteração: {iteration}/{iterations}")
+            print(f"Iteration: {iteration:7d}/{iterations}, epsilon: {self.epsilon:.5f}")
+
             if done:
                 state, _ = self.env.reset()
                 done = False
@@ -99,24 +99,15 @@ class BJAgent_DeepQLearning(BJAgent):
             state = next_state
 
             if (isinstance(validate_each_iteration, int) and iteration % validate_each_iteration == 0):
-
-                if not isinstance(epsilon_val, (int, float)):
-                    _epsilon_val = self.epsilon
-                else:
-                    _epsilon_val = epsilon_val
-                    
-                result = self.play(num_episodes=1_000, render_mode=None, print_results=False, epsilon=_epsilon_val)
-                self.history.append(result)
-
-                if verbose:
-                    print(f"Iteration: {iteration:10d}, epsilon: {self.epsilon:.5f}, Win: {result[0]}, Lose: {result[1]}, Win rate: {result[0]/(result[0]+result[1]):.3f}")
+                self.validation(iteration, iterations, epsilon_val, verbose, save)
 
             self.epsilon *= epsilon_decay_factor
             
 
 if __name__ == "__main__":
     agent = BJAgent_DeepQLearning()
-    agent.learn(iterations=2_000, final_epsilon=0.05, epsilon_val=0, validate_each_iteration=100, verbose=True)
+    agent.learn(iterations=5_000, final_epsilon=1e-2, epsilon_val=0, validate_each_iteration=5, verbose=True)
+    # from utils import load_agent
+    # agent = load_agent("./models/DeepQLearning.pickle")
     fig = agent.plot_history(return_fig=True)
     fig.savefig(f"./images/{agent.name}.png", dpi=300, format="png")
-    save_agent(agent, f"./models/{agent.name}.pickle")
