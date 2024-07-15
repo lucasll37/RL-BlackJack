@@ -219,14 +219,18 @@ class BJAgent(ABC):
 
                 if state_no_ace in push_hit_no_ace and state_ace in push_hit_ace:
                     color = 'blue'  # HIT in both cases
+                    alpha = 1
                 elif state_no_ace not in push_hit_no_ace and state_ace in push_hit_ace:
-                    color = 'orange'  # HIT only with ace
+                    color = 'blue'  # HIT only with ace
+                    alpha = 0.5
                 elif state_no_ace in push_hit_no_ace and state_ace not in push_hit_ace:
-                    color = 'yellow'  # HIT only without ace
+                    color = 'blue'  # HIT only without ace
+                    alpha = 0.1
                 else:
                     color = 'gray'  # STAND in any case
+                    alpha = 0.2
 
-                ax.plot(pc, dc, 'o', color=color, markersize=10)
+                ax.plot(pc, dc, 'o', color=color, markersize=20, alpha=alpha)
 
         ax.set_xlabel("Player Count", color="blue", fontsize=14)
         ax.set_ylabel("Dealer Count", color="blue", fontsize=14)
@@ -236,10 +240,10 @@ class BJAgent(ABC):
         ax.tick_params(axis="y", colors="blue")
 
         legend_elements = [
-            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='blue', markersize=10, label='Hit in both cases'),
-            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='orange', markersize=10, label='Hit only with ace'),
-            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='yellow', markersize=10, label='Hit only without ace'),
-            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='gray', markersize=10, label='Stand in any case')
+            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='blue', markersize=10, alpha=1, label='Hit in both cases'),
+            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='blue', markersize=10, alpha=0.5, label='Hit only with ace'),
+            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='blue', markersize=10, alpha=0.1, label='Hit only without ace'),
+            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='gray', markersize=10, alpha=0.2, label='Stand in any case')
         ]
 
         ax.legend(handles=legend_elements, loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=2)
