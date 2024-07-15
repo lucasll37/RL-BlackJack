@@ -9,6 +9,8 @@ SARSA = pd.read_csv("./data/SARSA.csv")
 QLearning = pd.read_csv("./data/QLearning.csv")
 DeepQLearning = pd.read_csv("./data/DeepQLearning.csv")
 
+red_line = 0.422
+
 fig, ax = plt.subplots(figsize=(12, 8))
 plt.rcParams["savefig.dpi"] = 300
 
@@ -58,12 +60,14 @@ sns.lineplot(
     ax=ax,
 )
 
+ax.axhline(y=red_line, color='red', linestyle='--', linewidth=1.5, label='Quasi-Optimum Monte Carlo')
 ax.set_ylabel("Win rate", color="blue", fontsize=14)
 ax.set_xlabel("Episode", color="blue", fontsize=14)
 ax.tick_params(axis="x", colors="blue")
 ax.tick_params(axis="y", colors="blue")
 ax.set_facecolor("#F0FFFF")
 
+ax.legend()
 plt.grid(True, linestyle=":", linewidth=0.5, color="gray", alpha=0.5)
 plt.tight_layout(rect=[0, 0, 1, 0.95])
 fig.savefig(f"./images/comparison.png", dpi=300, format="png")
