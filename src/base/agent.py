@@ -23,6 +23,8 @@ class BJAgent(ABC):
         self.map_state_Q = defaultdict(int)
         self.n_actions = self.env.action_space.n
         self.n_states = 0
+        self.delta = "-"
+        self.last_Q = None
         self.history = []
         self.validate_each_episodes = None
 
@@ -84,7 +86,8 @@ class BJAgent(ABC):
 
             while not done:
                 action = self.epsilon_greedy_policy(state, epsilon=epsilon)
-                state, reward, done, _, _ = env.step(action)
+                state, reward, done, trucated, _ = env.step(action)
+                done = done or trucated
 
             if reward == 1:
                 win += 1
@@ -120,8 +123,8 @@ class BJAgent(ABC):
 
         evolution = np.array(evolution)
 
-        fig, ax = plt.subplots(figsize=(12, 8))
         plt.rcParams["savefig.dpi"] = 300
+        fig, ax = plt.subplots(figsize=(12, 8))
 
         coordenate = np.array([self.validate_each_episodes * i for i in range(len(evolution))])
         curve_fit, asymptote = self.fit_exponential(coordenate, evolution)
@@ -173,7 +176,7 @@ class BJAgent(ABC):
         self.history.append(result)
             
         if verbose:
-            print(f"Episode: {episode:7d}/{episodes}, epsilon: {self.epsilon:.5f}, Win: {result[0]}, Lose: {result[1]}, Win rate: {result[0]/(result[0]+result[1]):.3f}")
+            print(f"Episode: {episode:7d}/{episodes}, epsilon: {self.epsilon:.5f}, delta: {self.delta:.2e}, Win rate: {result[0]/(result[0]+result[1]):.3f}")
 
         if save:
             save_agent(self, f"./models/{self.name}.pickle")
@@ -188,3 +191,83 @@ class BJAgent(ABC):
             epsilon_decay_factor = np.power(final_epsilon, 1/episodes)
 
         return epsilon_decay_factor
+    
+
+    def _plot_points(self, ax, point_list, style, label, alpha=0.8):
+
+        if point_list:
+            x, y = zip(*[(point[0], point[1]) for point in point_list])
+            ax.scatter(x, y, s=150, c=style, label=label, alpha=alpha)
+
+
+    def plot_policy(self, return_fig=False):
+
+        player_count = range(3, 22)
+        dealer_count = range(2, 12)
+        usable_ace = [0, 1]
+
+        push_stand_no_ace = []
+        push_hit_no_ace = []
+        push_stand_ace = []
+        push_hit_ace = []
+
+        for pc in player_count:
+            for dc in dealer_count:
+                for ua in usable_ace:
+
+                    state = (pc, dc, ua)
+                    action = self.epsilon_greedy_policy(state, epsilon=0)
+
+                    if ua == 0:
+
+                        if action == 0:
+                            push_stand_no_ace.append(state)
+                        elif action == 1:
+                            push_hit_no_ace.append(state)
+
+                    else:
+                        
+                        if action == 0:
+                            push_stand_ace.append(state)
+                        elif action == 1:
+                            push_hit_ace.append(state)
+
+        plt.rcParams["savefig.dpi"] = 300
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+        fig.suptitle(f"[{self.name}] BLACKJACK - POLICY", fontsize=16)
+
+        # Plotting no ace
+        ax1 = axes[0]
+        self._plot_points(ax1, push_stand_no_ace, 'gray', 'Stand', alpha=0.3)
+        self._plot_points(ax1, push_hit_no_ace, 'b', 'Hit')
+        ax1.set_xlabel("Player Count", color="blue", fontsize=14)
+        ax1.set_ylabel("Dealer Count", color="blue", fontsize=14)
+        ax1.set_title("Agent Policy (No Ace)", fontsize=14)
+        ax1.set_xticks(player_count)
+        ax1.set_yticks(dealer_count)
+        ax1.tick_params(axis="x", colors="blue")
+        ax1.tick_params(axis="y", colors="blue")
+
+        # Plotting with ace
+        ax2 = axes[1]
+        self._plot_points(ax2, push_stand_ace, 'gray', 'Stand', alpha=0.3)
+        self._plot_points(ax2, push_hit_ace, 'b', 'Hit')
+        ax2.set_xlabel("Player Count", color="blue", fontsize=14)
+        ax2.set_ylabel("Dealer Count", color="blue", fontsize=14)
+        ax2.set_title("Agent Policy (With Ace)", fontsize=14)
+        ax2.set_xticks(player_count)
+        ax2.set_yticks(dealer_count)
+        ax2.tick_params(axis="x", colors="blue")
+        ax2.tick_params(axis="y", colors="blue")
+
+        # Ajuste a legenda para fora da área da figura
+        handles, labels = ax1.get_legend_handles_labels()
+        fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=2)
+
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
+        plt.show()
+        plt.close()
+
+        if return_fig:
+            return fig

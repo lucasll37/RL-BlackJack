@@ -19,8 +19,9 @@ class BJAgent_Sarsa(BJAgent):
             state, _ = self.env.reset()
             done = False
             iteration = 0
+            self.last_Q = self.Q.copy()
             
-            while not done or iteration < self.max_iteration:
+            while not done and iteration < self.max_iteration:
                 
                 iteration += 1
 
@@ -38,6 +39,8 @@ class BJAgent_Sarsa(BJAgent):
                 state = next_state
 
             if (isinstance(validate_each_episodes, int) and episode % validate_each_episodes == 0):
+                self.delta = np.linalg.norm(self.Q - self.last_Q)
+                self.last_Q = self.Q.copy() 
                 self.validation(episode, episodes, epsilon_val, verbose, save)
 
             elif verbose:
@@ -47,7 +50,12 @@ class BJAgent_Sarsa(BJAgent):
             
 
 if __name__ == "__main__":
+    
     agent = BJAgent_Sarsa()
     agent.learn(episodes=5_000, final_epsilon=1e-2, validate_each_episodes=5, verbose=True)
-    fig = agent.plot_history(return_fig=True)
-    fig.savefig(f"./images/{agent.name}.png", dpi=300, format="png")
+    
+    history = agent.plot_history(return_fig=True)
+    policy = agent.plot_policy(return_fig=True)
+
+    history.savefig(f"./images/{agent.name}_history.png", dpi=300, format="png")
+    policy.savefig(f"./images/{agent.name}_policy.png", dpi=300, format="png")

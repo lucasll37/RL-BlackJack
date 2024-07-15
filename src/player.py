@@ -7,5 +7,5 @@ from utils import load_agent
 datapath = './models/DeepQLearning.pickle'
 
 agent = load_agent(datapath)
-agent.play(num_episodes=50, render_mode='human', print_results=True)
+agent.play(episodes=50, render_mode='human', print_results=True)
 agent.close()
