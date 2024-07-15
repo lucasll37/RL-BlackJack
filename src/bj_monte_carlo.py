@@ -88,10 +88,11 @@ class BJAgent_MonteCarlo(BJAgent):
 if __name__ == "__main__":
 
     agent = BJAgent_MonteCarlo()
+    agent.name = "QuasiOptimum_MonteCarlo"
     agent.learn(
-        episodes=5_000,
+        episodes=5_000_000,
         final_epsilon=1e-2,
-        validate_each_episodes=5,
+        validate_each_episodes=5_000,
         verbose=True,
     )
 
