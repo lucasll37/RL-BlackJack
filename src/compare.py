@@ -16,9 +16,33 @@ coordenate = [5 * i for i in range(len(monteCarlo))]
 
 
 ax.set_title(f"BLACKJACK - WIN RATE EVOLUTION COMPARISON", fontsize=16)
-sns.lineplot(x=coordenate, y=monteCarlo.iloc[:, 0], color="green", label="Monte Carlo", linestyle="-", linewidth=1.5, ax=ax)
-sns.lineplot(x=coordenate, y=SARSA.iloc[:, 0], color="orange", label="SARSA", linestyle="-", linewidth=1.5, ax=ax)
-sns.lineplot(x=coordenate, y=QLearning.iloc[:, 0], color="black", label="Q-Learning", linestyle="-", linewidth=1.5, ax=ax)
+sns.lineplot(
+    x=coordenate,
+    y=monteCarlo.iloc[:, 0],
+    color="green",
+    label="Monte Carlo",
+    linestyle="-",
+    linewidth=1.5,
+    ax=ax,
+)
+sns.lineplot(
+    x=coordenate,
+    y=SARSA.iloc[:, 0],
+    color="orange",
+    label="SARSA",
+    linestyle="-",
+    linewidth=1.5,
+    ax=ax,
+)
+sns.lineplot(
+    x=coordenate,
+    y=QLearning.iloc[:, 0],
+    color="black",
+    label="Q-Learning",
+    linestyle="-",
+    linewidth=1.5,
+    ax=ax,
+)
 # sns.lineplot(x=coordenate, y=DeepQLearning.iloc[:, 0], color="blue", label="Deep Q-Learning", linestyle="-", linewidth=1.5, ax=ax)
 ax.set_ylabel("Win rate", color="blue", fontsize=14)
 ax.set_xlabel("Episode", color="blue", fontsize=14)

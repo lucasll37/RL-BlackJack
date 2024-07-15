@@ -15,16 +15,19 @@ def reward_engineering(state, action, reward):
     return reward
 
 
-def save_agent(agent, filename):
-    with open(filename, 'wb') as file:
+def save_agent(agent, filename, verbose=True):
+    with open(filename, "wb") as file:
         cloudpickle.dump(agent, file)
 
-    print(f"\nAgente salvo em {filename}\n")
+    if verbose:
+        print(f"\nAgente salvo em {filename}\n")
 
-def load_agent(filename):
-    with open(filename, 'rb') as file:
+
+def load_agent(filename, verbose=True):
+    with open(filename, "rb") as file:
         agent = cloudpickle.load(file)
 
-    print(f"\n\nAgente carregado de {filename}\n")
+    if verbose:
+        print(f"\n\nAgente carregado de {filename}\n")
 
     return agent

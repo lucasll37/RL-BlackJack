@@ -29,15 +29,17 @@ The project implements agents that can learn to play Blackjack using various rei
 
 ### B. Installation with Makefile
 
-3. Create the local virtual environment and install dependencies:
+2. Create the local virtual environment and install dependencies:
     ```sh
     make configure
     ```
 
-4. Activate the virtual environment:
+3. Activate the virtual environment:
     ```sh
     make build
     ```
+
+4. In both cases, make sure the environment is active.
 
 ## Usage
 
@@ -75,7 +77,7 @@ blackjack-RL/
 │ ├── bj_monte_carlo.py
 │ ├── bj_q_learning.py
 │ ├── bj_sarsa.py
-│ ├── bj_temporal_difference.py
+│ ├── compare.py
 │ ├── player.py
 │ └── utils.py
 |
@@ -116,7 +118,7 @@ make configure
 ```
 
 ### `build`
-Activate local virtual environment.
+Activate local virtual environment and adjust code formatting.
 
 **Usage:**
 ```sh
