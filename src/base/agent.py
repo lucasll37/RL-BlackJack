@@ -23,7 +23,7 @@ class BJAgent(ABC):
         self.map_state_Q = defaultdict(int)
         self.n_actions = self.env.action_space.n
         self.n_states = 0
-        self.delta = "-"
+        self.delta = 0
         self.last_Q = None
         self.history = []
         self.validate_each_episodes = None
