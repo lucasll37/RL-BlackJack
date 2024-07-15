@@ -13,9 +13,11 @@ fig, ax = plt.subplots(figsize=(12, 8))
 plt.rcParams["savefig.dpi"] = 300
 
 coordenate = [5 * i for i in range(len(monteCarlo))]
+_coordenate = [5 * i for i in range(len(DeepQLearning))]
 
 
 ax.set_title(f"BLACKJACK - WIN RATE EVOLUTION COMPARISON", fontsize=16)
+
 sns.lineplot(
     x=coordenate,
     y=monteCarlo.iloc[:, 0],
@@ -25,6 +27,7 @@ sns.lineplot(
     linewidth=1.5,
     ax=ax,
 )
+
 sns.lineplot(
     x=coordenate,
     y=SARSA.iloc[:, 0],
@@ -34,6 +37,7 @@ sns.lineplot(
     linewidth=1.5,
     ax=ax,
 )
+
 sns.lineplot(
     x=coordenate,
     y=QLearning.iloc[:, 0],
@@ -43,7 +47,17 @@ sns.lineplot(
     linewidth=1.5,
     ax=ax,
 )
-# sns.lineplot(x=coordenate, y=DeepQLearning.iloc[:, 0], color="blue", label="Deep Q-Learning", linestyle="-", linewidth=1.5, ax=ax)
+
+sns.lineplot(
+    x=_coordenate,
+    y=DeepQLearning.iloc[:, 0],
+    color="blue",
+    label="Deep Q-Learning",
+    linestyle="-",
+    linewidth=1.5,
+    ax=ax,
+)
+
 ax.set_ylabel("Win rate", color="blue", fontsize=14)
 ax.set_xlabel("Episode", color="blue", fontsize=14)
 ax.tick_params(axis="x", colors="blue")

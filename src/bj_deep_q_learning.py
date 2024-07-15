@@ -153,6 +153,10 @@ if __name__ == "__main__":
         verbose=True,
     )
 
+    # from utils import load_agent
+
+    # agent = load_agent("./models/DeepQLearning.pickle")
+
     history = agent.plot_history(return_fig=True)
     policy = agent.plot_policy(return_fig=True)
 

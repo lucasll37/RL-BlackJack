@@ -145,7 +145,11 @@ class BJAgent(ABC):
         coordenate = np.array(
             [self.validate_each_episodes * i for i in range(len(evolution))]
         )
-        curve_fit, asymptote = self.fit_exponential(coordenate, evolution)
+
+        coordenate_to_fit = np.array([ i for i in range(len(evolution))])
+        curve_fit, asymptote = self.fit_exponential(coordenate_to_fit, evolution)
+        # curve_fit, asymptote = self.fit_exponential(coordenate, evolution)
+
         Series(curve_fit).to_csv(f"./data/{self.name}.csv", index=False)
 
         ax.set_title(f"[{self.name}] BLACKJACK - WIN RATE EVOLUTION", fontsize=16)
