@@ -10,41 +10,50 @@ class BJAgent_MonteCarlo(BJAgent):
         self.name = "MonteCarlo"
 
 
-    def learn(self, iterations=10_000, final_epsilon=0.01, epsilon_decay=None, epsilon_val=None, validate_each_iteration=None, verbose=True, save=True):
+    def learn(self, episodes=10_000, final_epsilon=0.01, epsilon_decay=None, epsilon_val=None, validate_each_episodes=None, verbose=True, save=True):
 
-        epsilon_decay_factor = self.epsilon_update(iterations, validate_each_iteration, final_epsilon, epsilon_decay)
+        epsilon_decay_factor = self.epsilon_update(episodes, validate_each_episodes, final_epsilon, epsilon_decay)
 
-        for iteration in range(1, iterations+1):
-            print(f"Iteration: {iteration:7d}/{iterations}, epsilon: {self.epsilon:.5f}")
+        for episode in range(1, episodes+1):
 
-            G = 0
             state, _ = self.env.reset()
             done = False
-            episodes = []
+            iteration = 0
+            G = 0
+            steps = []
 
-            while not done:
+            while not done or iteration < self.max_iteration:
+                
+                iteration += 1
+                
                 action = self.epsilon_greedy_policy(state, epsilon=self.epsilon)
-                next_state, reward, done, _, _ = self.env.step(action)
+                next_state, reward, done, truncated, _ = self.env.step(action)
+
+                done = done or truncated
                 reward = reward_engineering(state, action, reward)
-                episodes.append((state, action, reward))
+
+                steps.append((state, action, reward))
                 state = next_state
 
-            for t in range(len(episodes) - 1, -1, -1):
-                state, action, reward = episodes[t]
+            for t in range(len(steps) - 1, -1, -1):
+                state, action, reward = steps[t]
                 G = self.gamma * G + reward
                 self.N[self.map_state_Q[state]] += 1
                 old_value = self.Q[self.map_state_Q[state], action]
                 new_value = old_value + (1 / self.N[self.map_state_Q[state]]) * (G - old_value)
                 self.Q[self.map_state_Q[state], action] = new_value
 
-            if (isinstance(validate_each_iteration, int) and iteration % validate_each_iteration == 0):
-                self.validation(iteration, iterations, epsilon_val, verbose, save)
+            if (isinstance(validate_each_episodes, int) and episode % validate_each_episodes == 0):
+                self.validation(episode, episodes, epsilon_val, verbose, save)
+
+            elif verbose:
+                print(f"Episode: {episode:7d}/{episodes}, epsilon: {self.epsilon:.5f}")
                 
             self.epsilon *= epsilon_decay_factor
 
 
 if __name__ == "__main__":
     agent = BJAgent_MonteCarlo()
-    agent.learn(iterations=5_000, final_epsilon=1e-2, validate_each_iteration=5, verbose=True)
+    agent.learn(episodes=5_000, final_epsilon=1e-2, validate_each_episodes=5, verbose=True)
     fig = agent.plot_history(return_fig=True)
     fig.savefig(f"./images/{agent.name}.png", dpi=300, format="png")

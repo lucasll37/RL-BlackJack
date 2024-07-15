@@ -12,7 +12,7 @@ from utils import save_agent
 
 class BJAgent(ABC):
 
-    def __init__(self, render_mode=None, gamma=1, initial_epsilon=1, natural=False, sab=False, max_iteration=500):
+    def __init__(self, render_mode=None, gamma=1, initial_epsilon=1, natural=False, sab=False, max_iteration=21):
         self.env = gym.make("Blackjack-v1", natural=natural, sab=sab, render_mode=render_mode)
         self.gamma = gamma
         self.initial_epsilon = initial_epsilon
@@ -24,7 +24,7 @@ class BJAgent(ABC):
         self.n_actions = self.env.action_space.n
         self.n_states = 0
         self.history = []
-        self.validate_each_iteration = None
+        self.validate_each_episodes = None
 
         _dimensions = defaultdict(float)
         _observation_space = self.env.observation_space
@@ -58,7 +58,7 @@ class BJAgent(ABC):
         self.N = np.zeros(self.n_states)
 
 
-    def learn(self, iterations=10_000, final_epsilon=0.01, epsilon_decay=None, epsilon_val=None, validate_each_iteration=None, verbose=True, save=True):
+    def learn(self, episodes=10_000, final_epsilon=0.01, epsilon_decay=None, epsilon_val=None, validate_each_episodes=None, verbose=True, save=True):
 
         raise NotImplementedError('Please implement this method')
 
@@ -70,7 +70,7 @@ class BJAgent(ABC):
             return np.argmax(self.Q[self.map_state_Q[state]])
         
 
-    def play(self, num_episodes=1_000, render_mode="human", print_results=True, epsilon=None):
+    def play(self, episodes=1_000, render_mode="human", print_results=True, epsilon=None):
         env = gym.make("Blackjack-v1", natural=self.natural, sab=self.sab, render_mode=render_mode)
         win = 0
         lose = 0
@@ -78,7 +78,7 @@ class BJAgent(ABC):
         if epsilon is None:
             epsilon = self.epsilon
 
-        for i in range(num_episodes):
+        for i in range(episodes):
             state, _ = env.reset()
             done = False
 
@@ -123,7 +123,7 @@ class BJAgent(ABC):
         fig, ax = plt.subplots(figsize=(12, 8))
         plt.rcParams["savefig.dpi"] = 300
 
-        coordenate = np.array([self.validate_each_iteration * i for i in range(len(evolution))])
+        coordenate = np.array([self.validate_each_episodes * i for i in range(len(evolution))])
         curve_fit, asymptote = self.fit_exponential(coordenate, evolution)
 
         ax.set_title(f"[{self.name}] BLACKJACK - WIN RATE EVOLUTION", fontsize=16)
@@ -162,29 +162,29 @@ class BJAgent(ABC):
         return y_fitted, asymptote
     
 
-    def validation(self, iteration, iterations, epsilon_val, verbose, save):
+    def validation(self, episode, episodes, epsilon_val, verbose, save):
 
         if not isinstance(epsilon_val, (int, float)):
             _epsilon_val = self.epsilon
         else:
             _epsilon_val = epsilon_val
             
-        result = self.play(num_episodes=1_000, render_mode=None, print_results=False, epsilon=_epsilon_val)
+        result = self.play(episodes=1_000, render_mode=None, print_results=False, epsilon=_epsilon_val)
         self.history.append(result)
             
         if verbose:
-            print(f"Iteration: {iteration:7d}/{iterations}, epsilon: {self.epsilon:.5f}, Win: {result[0]}, Lose: {result[1]}, Win rate: {result[0]/(result[0]+result[1]):.3f}")
+            print(f"Episode: {episode:7d}/{episodes}, epsilon: {self.epsilon:.5f}, Win: {result[0]}, Lose: {result[1]}, Win rate: {result[0]/(result[0]+result[1]):.3f}")
 
         if save:
             save_agent(self, f"./models/{self.name}.pickle")
 
 
-    def epsilon_update(self, iterations, validate_each_iteration, final_epsilon, epsilon_decay):
-        self.validate_each_iteration = validate_each_iteration
+    def epsilon_update(self, episodes, validate_each_episodes, final_epsilon, epsilon_decay):
+        self.validate_each_episodes = validate_each_episodes
 
         if isinstance(epsilon_decay, (int, float)):
             epsilon_decay_factor = epsilon_decay
         else:
-            epsilon_decay_factor = np.power(final_epsilon, 1/iterations)
+            epsilon_decay_factor = np.power(final_epsilon, 1/episodes)
 
         return epsilon_decay_factor

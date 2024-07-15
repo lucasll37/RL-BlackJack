@@ -58,9 +58,10 @@ class BJAgent_DeepQLearning(BJAgent):
 
         for state_array, action, reward, next_state_array, done in minibatch:
             target = self.model.predict(state_array, verbose=0)
+            next_action = self.epsilon_greedy_policy(next_state_array, epsilon=0)
 
             if not done:
-                target[0][action] = reward + self.gamma * self.model.predict(next_state_array, verbose=0)[0][action]
+                target[0][action] = reward + self.gamma * self.model.predict(next_state_array, verbose=0)[0][next_action]
 
             else:
                 target[0][action] = reward
@@ -73,41 +74,43 @@ class BJAgent_DeepQLearning(BJAgent):
         return
 
 
-    def learn(self, iterations=100, final_epsilon=0.01, epsilon_decay=None, epsilon_val=None, validate_each_iteration=None, verbose=True, save=True):
+    def learn(self, episodes=100, final_epsilon=0.01, epsilon_decay=None, epsilon_val=None, validate_each_episodes=None, verbose=True, save=True):
 
-        epsilon_decay_factor = self.epsilon_update(iterations, validate_each_iteration, final_epsilon, epsilon_decay)
-
+        epsilon_decay_factor = self.epsilon_update(episodes, validate_each_episodes, final_epsilon, epsilon_decay)
         done = True
 
-        for iteration in range(1, iterations+1):
-            print(f"Iteration: {iteration:7d}/{iterations}, epsilon: {self.epsilon:.5f}")
+        for episode in range(1, episodes+1):
 
-            if done:
-                state, _ = self.env.reset()
-                done = False
+            state, _ = self.env.reset()
+            done = False
+            iteration = 0
+            
+            while not done or iteration < self.max_iteration:
+                
+                iteration += 1
 
+                action = self.epsilon_greedy_policy(state, epsilon=self.epsilon)
+                next_state, reward, done, truncated, _ = self.env.step(action)
 
-            action = self.epsilon_greedy_policy(state, epsilon=self.epsilon)
-            next_state, reward, done, _, _ = self.env.step(action)
-            reward = reward_engineering(state, action, reward)
+                done = done or truncated
+                reward = reward_engineering(state, action, reward)
+                state_array = np.array(state, dtype=np.float32).reshape(1, -1)
+                next_state_array = np.array(next_state, dtype=np.float32).reshape(1, -1)
+                self.replay_buffer.append((state_array, action, reward, next_state_array, done))
+                self.update_policy()
+                state = next_state
 
-            state_array = np.array(state, dtype=np.float32).reshape(1, -1)
-            next_state_array = np.array(next_state, dtype=np.float32).reshape(1, -1)
+            if (isinstance(validate_each_episodes, int) and episode % validate_each_episodes == 0):
+                self.validation(episode, episodes, epsilon_val, verbose, save)
 
-            self.replay_buffer.append((state_array, action, reward, next_state_array, done))
-            self.update_policy()
-            state = next_state
-
-            if (isinstance(validate_each_iteration, int) and iteration % validate_each_iteration == 0):
-                self.validation(iteration, iterations, epsilon_val, verbose, save)
+            elif verbose:
+                print(f"Episode: {episode:7d}/{episodes}, epsilon: {self.epsilon:.5f}")
 
             self.epsilon *= epsilon_decay_factor
             
 
 if __name__ == "__main__":
     agent = BJAgent_DeepQLearning()
-    agent.learn(iterations=5_000, final_epsilon=1e-2, epsilon_val=0, validate_each_iteration=5, verbose=True)
-    # from utils import load_agent
-    # agent = load_agent("./models/DeepQLearning.pickle")
+    agent.learn(episodes=5_000, final_epsilon=1e-2, epsilon_val=0, validate_each_episodes=5, verbose=True)
     fig = agent.plot_history(return_fig=True)
     fig.savefig(f"./images/{agent.name}.png", dpi=300, format="png")
