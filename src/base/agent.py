@@ -148,7 +148,6 @@ class BJAgent(ABC):
 
         coordenate_to_fit = np.array([ i for i in range(len(evolution))])
         curve_fit, asymptote = self.fit_exponential(coordenate_to_fit, evolution)
-        # curve_fit, asymptote = self.fit_exponential(coordenate, evolution)
 
         Series(curve_fit).to_csv(f"./data/{self.name}.csv", index=False)
 
@@ -219,7 +218,7 @@ class BJAgent(ABC):
                             push_hit_ace.append(state)
 
         fig, ax = plt.subplots(figsize=(14, 6))
-        fig.suptitle("[MonteCarlo] BLACKJACK - POLICY", fontsize=16)
+        fig.suptitle(f"[{self.name}] BLACKJACK - POLICY", fontsize=16)
 
         for pc in player_count:
             for dc in dealer_count:

@@ -59,6 +59,8 @@ This project structure includes:
 
 ```
 blackjack-RL/
+├── data/
+├── doc/
 ├── images/
 │ ├── Monte Carlo.png
 │ ├── MonteCarlo.png
@@ -87,6 +89,8 @@ blackjack-RL/
 └── requirements.txt
 ```
 
+- `data/`: Directory containing datas generated during agent training.
+- `doc/`: Directory containing the academic report of the work carried out.
 - `images/`: Directory containing images generated during agent training.
 - `models/`: Directory containing trained models.
 - `src/`: Directory containing the project source code.
