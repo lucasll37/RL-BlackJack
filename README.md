@@ -16,7 +16,7 @@ The project implements agents that can learn to play Blackjack using various rei
 
 ### A. Manual Installation
 
-2. Create and activate a virtual environment (optional but recommended):
+2. Create and activate a virtual environment:
     ```sh
     python3 -m venv .venv
     source .venv/bin/activate
