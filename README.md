@@ -10,7 +10,7 @@ The project implements agents that can learn to play Blackjack using various rei
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/your-username/blackjack-agent.git
+    git clone git@github.com:lucasll37/RL-BlackJack.git
     cd blackjack-agent
     ```
 
