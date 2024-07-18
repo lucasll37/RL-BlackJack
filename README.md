@@ -14,7 +14,7 @@ The project implements agents that can learn to play Blackjack using various rei
     cd blackjack-agent
     ```
 
-### A. Manual Installation
+### Option A. Manual Installation
 
 2. Create and activate a virtual environment:
     ```sh
@@ -27,7 +27,7 @@ The project implements agents that can learn to play Blackjack using various rei
     pip install -r requirements.txt
     ```
 
-### B. Installation with Makefile
+### Option B. Installation with Makefile
 
 2. Create the local virtual environment and install dependencies:
     ```sh
